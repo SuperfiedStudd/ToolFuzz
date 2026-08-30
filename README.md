@@ -43,6 +43,34 @@ logical latencies. JSON mode emits the complete structured result, including
 the trace. A suite can define regression gates in `suite.yaml`; a failed gate
 produces a non-zero exit code.
 
+## Provider support
+
+| Provider | Adapter | Live validated |
+| --- | --- | --- |
+| Scripted | Yes | Deterministic CI |
+| Gemini | Yes | Happy path validated; recovery quota-limited |
+| OpenAI | Yes | No |
+| Anthropic | Yes | No |
+
+Provider SDKs are optional. Install Gemini support with
+`pip install -e ".[gemini]"`, or all provider SDKs with
+`pip install -e ".[providers]"`. Keys come from environment variables; use
+`.env.example` as a placeholder template and never commit local secret files.
+
+The dedicated smoke command runs only two scenarios:
+
+```bash
+toolfuzz live-test gemini
+toolfuzz live-test gemini --model gemini-3.6-flash
+```
+
+The happy-path smoke run was validated successfully. The timeout-after-commit
+run committed one refund but the provider quota was exhausted before Gemini
+could complete recovery, so it is not claimed as a successful live validation.
+Live provider runs may incur API charges. ToolFuzz retains control of tool
+execution, fault injection, validation, and trace recording; provider SDKs do
+not execute tools directly.
+
 ## Supported faults
 
 | Fault | Stage | Simulation |
@@ -75,8 +103,5 @@ regression suite without external API keys.
 
 The first slice includes `get_order`, `get_refund`, and idempotent
 `create_refund`, plus the `AgentAdapter` interface and `ScriptedAgent`.
-Provider adapters, persistence, dashboards, and distributed execution are
-intentionally out of scope.
-
-Provider adapters, persistence, dashboards, distributed execution, and
-frontend support are not implemented yet.
+Persistence, dashboards, distributed execution, frontend support, and live
+OpenAI/Anthropic validation are not implemented yet.

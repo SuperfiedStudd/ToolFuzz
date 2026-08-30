@@ -42,7 +42,13 @@ class Runner:
         injector = FaultInjector(self._build_faults(scenario))
         chosen_agent = agent or ScriptedAgent(retry_policy=self.retry_policy)
         history: dict[str, list[tuple[dict[str, Any], ToolResult]]] = {}
-        trace.record("agent_start", task=scenario.task)
+        if hasattr(chosen_agent, "trace"):
+            chosen_agent.trace = trace
+        start_metadata: dict[str, Any] = {"task": scenario.task}
+        if hasattr(chosen_agent, "provider"):
+            start_metadata["provider"] = chosen_agent.provider
+            start_metadata["model"] = getattr(chosen_agent, "model", "scripted")
+        trace.record("agent_start", **start_metadata)
         error: str | None = None
 
         async with SandboxClient(self.state) as client:

@@ -2,10 +2,12 @@
 
 import json
 from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 
 import yaml
 
+from ..agents.base import AgentAdapter
 from ..core.models import (
     RegressionGates,
     Scenario,
@@ -34,7 +36,10 @@ def load_gates(directory: Path) -> RegressionGates:
     return RegressionGates.model_validate(config.get("gates", config))
 
 
-async def run_suite(directory: Path) -> SuiteResult:
+async def run_suite(
+    directory: Path,
+    agent_factory: Callable[[dict[str, ToolContract]], AgentAdapter] | None = None,
+) -> SuiteResult:
     scenario_paths = sorted(
         path
         for path in directory.glob("*.yaml")
@@ -46,8 +51,12 @@ async def run_suite(directory: Path) -> SuiteResult:
     results = []
     for scenario_path in scenario_paths:
         stateful_runner = Runner(contracts)
+        agent = agent_factory(contracts) if agent_factory else None
         results.append(
-            await stateful_runner.run(Scenario.from_yaml(str(scenario_path)))
+            await stateful_runner.run(
+                Scenario.from_yaml(str(scenario_path)),
+                agent=agent,
+            )
         )
     metrics = aggregate_metrics(results)
     gates = load_gates(directory)
