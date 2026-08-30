@@ -1,0 +1,95 @@
+[
+  {
+    "name": "get_order",
+    "description": "Read an order from the refund service.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "order_id": {"type": "string"}
+      },
+      "required": ["order_id"],
+      "additionalProperties": false
+    },
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "order_id": {"type": "string"},
+        "status": {"type": "string"},
+        "amount_cents": {"type": "integer"}
+      },
+      "required": ["order_id", "status", "amount_cents"],
+      "additionalProperties": false
+    },
+    "has_side_effects": false
+  },
+  {
+    "name": "get_refund",
+    "description": "Read the refund for an order, if one exists.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "order_id": {"type": "string"}
+      },
+      "required": ["order_id"],
+      "additionalProperties": false
+    },
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "refund": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "refund_id": {"type": "string"},
+                "order_id": {"type": "string"},
+                "amount_cents": {"type": "integer"},
+                "status": {"type": "string"}
+              },
+              "required": ["refund_id", "order_id", "amount_cents", "status"],
+              "additionalProperties": false
+            },
+            {"type": "null"}
+          ]
+        }
+      },
+      "required": ["refund"],
+      "additionalProperties": false
+    },
+    "has_side_effects": false
+  },
+  {
+    "name": "create_refund",
+    "description": "Create exactly one refund using an idempotency key.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "order_id": {"type": "string"},
+        "amount_cents": {"type": "integer", "minimum": 1},
+        "idempotency_key": {"type": "string", "minLength": 1}
+      },
+      "required": ["order_id", "amount_cents", "idempotency_key"],
+      "additionalProperties": false
+    },
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "refund": {
+          "type": "object",
+          "properties": {
+            "refund_id": {"type": "string"},
+            "order_id": {"type": "string"},
+            "amount_cents": {"type": "integer"},
+            "status": {"type": "string"}
+          },
+          "required": ["refund_id", "order_id", "amount_cents", "status"],
+          "additionalProperties": false
+        },
+        "created": {"type": "boolean"}
+      },
+      "required": ["refund", "created"],
+      "additionalProperties": false
+    },
+    "has_side_effects": true
+  }
+]

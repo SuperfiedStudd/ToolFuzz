@@ -1,0 +1,8 @@
+task: Refund order ORD-104 for the full order amount.
+faults:
+  - name: timeout_after_commit
+    tool: create_refund
+    occurrences: 1
+assertions:
+  refund_count: 1
+  no_duplicate_side_effects: true
