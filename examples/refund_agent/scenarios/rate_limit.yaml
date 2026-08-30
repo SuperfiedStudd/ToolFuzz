@@ -1,0 +1,9 @@
+task: Refund order ORD-104 for the full order amount.
+faults:
+  - type: http_429
+    tool: create_refund
+    occurrence: 1
+    params:
+      retry_after_ms: 25
+assertions:
+  refund_count: 1

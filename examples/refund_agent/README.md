@@ -10,4 +10,8 @@ Run it from the repository root:
 ```bash
 toolfuzz run examples/refund_agent/scenario.yaml
 toolfuzz run examples/refund_agent/scenario.yaml --report json
+toolfuzz run examples/refund_agent/scenarios/
 ```
+
+The directory command runs the ten deterministic fault regression scenarios
+and applies the gates in `scenarios/suite.yaml`.

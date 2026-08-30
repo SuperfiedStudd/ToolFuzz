@@ -1,0 +1,9 @@
+task: Refund order ORD-104 for the full order amount.
+faults:
+  - type: missing_required_field
+    tool: create_refund
+    occurrence: 1
+    params:
+      field: created
+assertions:
+  refund_count: 1

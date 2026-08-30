@@ -45,5 +45,8 @@ async def test_timeout_after_commit_recovers_without_duplicate() -> None:
     assert result.metrics.duplicate_side_effects == 0
     assert result.metrics.schema_violations == 0
     assert result.metrics.total_tool_calls == 3
-    assert result.metrics.p50_latency_ms == 1.0
-    assert result.metrics.p95_latency_ms == 90.1
+    assert result.metrics.p50_latency_ms == 2.0
+    assert result.metrics.p95_latency_ms == 90.2
+    assert result.metrics.faults_injected == 1
+    assert result.metrics.retries == 1
+    assert result.metrics.recovery_attempts == 1

@@ -3,7 +3,7 @@
 from statistics import quantiles
 from typing import Iterable
 
-from .models import Metrics, Scenario
+from .models import Metrics, RunResult, Scenario, SuiteMetrics
 from .trace import Trace
 
 
@@ -30,8 +30,7 @@ def calculate_metrics(
         for event in trace.metadata_for("fault_injected")
     )
     invalid_retries = sum(
-        event.get("reason") == "schema_violation"
-        for event in trace.metadata_for("retry")
+        not event.get("valid", True) for event in trace.metadata_for("retry")
     )
     duplicate_side_effects = sum(
         not event.get("created", True)
@@ -56,6 +55,55 @@ def calculate_metrics(
         invalid_retries=invalid_retries,
         duplicate_side_effects=duplicate_side_effects,
         total_tool_calls=total_calls,
+        p50_latency_ms=percentile(latencies, 50),
+        p95_latency_ms=percentile(latencies, 95),
+        faults_injected=trace.count("fault_injected"),
+        retries=trace.count("retry"),
+        recovery_attempts=trace.count("recovery_attempt"),
+    )
+
+
+def aggregate_metrics(results: list[RunResult]) -> SuiteMetrics:
+    latencies = [
+        float(event.metadata["latency_ms"])
+        for result in results
+        for event in result.events
+        if event.event_type == "tool_response"
+    ]
+    passed = sum(
+        result.metrics.task_success and result.metrics.graceful_recovery
+        for result in results
+    )
+    total = len(results)
+    return SuiteMetrics(
+        scenarios_passed=passed,
+        scenarios_total=total,
+        task_success_rate=round(
+            sum(result.metrics.task_success for result in results) / total, 2
+        )
+        if total
+        else 0.0,
+        graceful_recovery_rate=round(
+            sum(result.metrics.graceful_recovery for result in results) / total, 2
+        )
+        if total
+        else 0.0,
+        total_schema_violations=sum(
+            result.metrics.schema_violations for result in results
+        ),
+        total_invalid_retries=sum(
+            result.metrics.invalid_retries for result in results
+        ),
+        total_duplicate_side_effects=sum(
+            result.metrics.duplicate_side_effects for result in results
+        ),
+        total_faults_injected=sum(
+            result.metrics.faults_injected for result in results
+        ),
+        total_retries=sum(result.metrics.retries for result in results),
+        total_recovery_attempts=sum(
+            result.metrics.recovery_attempts for result in results
+        ),
         p50_latency_ms=percentile(latencies, 50),
         p95_latency_ms=percentile(latencies, 95),
     )

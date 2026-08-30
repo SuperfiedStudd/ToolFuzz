@@ -3,10 +3,10 @@
 **An adversarial reliability testing framework for tool-using AI agents.**
 
 ToolFuzz injects realistic failures into tool/API interactions and measures
-whether an agent recovers safely. V1 contains one complete, deterministic
-vertical slice: a scripted refund agent, an in-memory FastAPI tool service,
-JSON Schema contracts, structured traces, metrics, and the
-`timeout_after_commit` fault.
+whether an agent recovers safely. The current V1 foundation includes a
+deterministic scripted refund agent, an in-memory FastAPI tool service, JSON
+Schema contracts, structured traces, retry accounting, regression suites, and
+a core library of staged faults.
 
 ## The timeout-after-commit problem
 
@@ -33,13 +33,43 @@ pip install -e ".[dev]"
 
 toolfuzz run examples/refund_agent/scenario.yaml
 toolfuzz run examples/refund_agent/scenario.yaml --report json
+toolfuzz run examples/refund_agent/scenarios/
 pytest
 ```
 
 The CLI prints the injected fault, PASS/FAIL, recovery metrics, schema
-violations, duplicate side effects, tool-call count, and p50/p95 logical
-latencies. JSON mode emits the complete structured run result, including the
-trace.
+violations, retries, duplicate side effects, tool-call count, and p50/p95
+logical latencies. JSON mode emits the complete structured result, including
+the trace. A suite can define regression gates in `suite.yaml`; a failed gate
+produces a non-zero exit code.
+
+## Supported faults
+
+| Fault | Stage | Simulation |
+| --- | --- | --- |
+| `http_429` | before execution | Rate limit with Retry-After metadata |
+| `http_500` | before execution | Server-side HTTP failure |
+| `timeout` | before execution | Timeout with no tool operation |
+| `slow_response` | after response | Configurable response delay |
+| `malformed_json` | after response | Unparseable response body |
+| `missing_required_field` | after response | Removes a required response field |
+| `duplicate_response` | after response | Replays the prior successful response |
+| `stale_data` | after response | Older valid resource state |
+| `conflicting_data` | after response | Valid data conflicting with current state |
+| `schema_drift` | after response | Renamed/type-changed response field |
+| `timeout_after_commit` | after commit | Committed side effect with lost response |
+
+Every injected fault is recorded in the trace. Transport failures, HTTP
+failures, malformed responses, schema violations, and semantic conflicts stay
+distinct so the agent receives the real failure mode.
+
+## Deterministic CI regression testing
+
+The refund scenarios under `examples/refund_agent/scenarios/` run independently
+against fresh sandbox state. They cover the happy path and each core fault,
+including the flagship timeout-after-commit/idempotency case. The GitHub
+Actions workflow installs the package, runs the pytest suite, and runs this
+regression suite without external API keys.
 
 ## Current scope
 
@@ -48,8 +78,5 @@ The first slice includes `get_order`, `get_refund`, and idempotent
 Provider adapters, persistence, dashboards, and distributed execution are
 intentionally out of scope.
 
-## Planned V1 faults
-
-Upcoming fault types include 429s, 500s, malformed responses, missing fields,
-schema drift, stale or conflicting data, duplicate responses, and slow
-responses.
+Provider adapters, persistence, dashboards, distributed execution, and
+frontend support are not implemented yet.

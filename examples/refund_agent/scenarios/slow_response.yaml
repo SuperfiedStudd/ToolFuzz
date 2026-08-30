@@ -1,0 +1,9 @@
+task: Refund order ORD-104 for the full order amount.
+faults:
+  - type: slow_response
+    tool: create_refund
+    occurrence: 1
+    params:
+      delay_ms: 25
+assertions:
+  refund_count: 1

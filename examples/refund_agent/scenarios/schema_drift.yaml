@@ -1,0 +1,10 @@
+task: Refund order ORD-104 for the full order amount.
+faults:
+  - type: schema_drift
+    tool: create_refund
+    occurrence: 1
+    params:
+      field: status
+      mode: rename
+assertions:
+  refund_count: 1

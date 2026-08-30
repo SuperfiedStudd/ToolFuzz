@@ -1,13 +1,15 @@
 """Faults that occur after a side effect has been committed."""
 
-from .base import Fault, FaultDecision
+from .base import Fault, FaultContext, FaultOutcome, FaultStage
 
 
 class TimeoutAfterCommitFault(Fault):
-    name = "timeout_after_commit"
+    stage = FaultStage.AFTER_COMMIT
 
-    def consider(self, tool: str) -> FaultDecision | None:
-        decision = super().consider(tool)
-        if decision and decision.fault != self.name:
-            return None
-        return decision
+    async def apply(self, context: FaultContext) -> FaultOutcome:
+        del context
+        return FaultOutcome(
+            error_type="transport_failure",
+            error_message="request timed out after the side effect committed",
+            metadata={"ambiguous": True},
+        )

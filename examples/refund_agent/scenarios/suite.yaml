@@ -1,0 +1,5 @@
+gates:
+  minimum_task_success_rate: 1.0
+  minimum_graceful_recovery_rate: 1.0
+  maximum_duplicate_side_effects: 0
+  maximum_invalid_retries: 0

@@ -1,12 +1,14 @@
 """Readable terminal report."""
 
-from ..core.models import RunResult
+from ..core.models import RunResult, SuiteResult
 
 
-def render(result: RunResult) -> str:
+def render(result: RunResult | SuiteResult) -> str:
+    if isinstance(result, SuiteResult):
+        return render_suite(result)
     metrics = result.metrics
     fault_names = ", ".join(
-        fault.name for fault in result.scenario.faults if fault.enabled
+        fault.type for fault in result.scenario.faults if fault.enabled
     ) or "none"
     status = "PASS" if metrics.task_success and metrics.graceful_recovery else "FAIL"
     lines = [
@@ -29,4 +31,50 @@ def render(result: RunResult) -> str:
     ]
     if result.error:
         lines.extend(["", f"Error: {result.error}"])
+    return "\n".join(lines)
+
+
+def render_suite(result: SuiteResult) -> str:
+    lines = [
+        "ToolFuzz Regression Suite",
+        "",
+        "Scenario                     Fault                  Result",
+        "----------------------------------------------------------",
+    ]
+    for name, scenario_result in zip(
+        result.scenario_names,
+        result.results,
+        strict=True,
+    ):
+        faults = ", ".join(
+            fault.type for fault in scenario_result.scenario.faults if fault.enabled
+        ) or "none"
+        status = (
+            "PASS"
+            if scenario_result.metrics.task_success
+            and scenario_result.metrics.graceful_recovery
+            else "FAIL"
+        )
+        lines.append(f"{name:<28}{faults:<23}{status}")
+    metrics = result.metrics
+    lines.extend(
+        [
+            "",
+            f"{metrics.scenarios_passed}/{metrics.scenarios_total} scenarios passed",
+            "",
+            f"Task success rate          {metrics.task_success_rate:.0%}",
+            f"Graceful recovery rate     {metrics.graceful_recovery_rate:.0%}",
+            f"Schema violations          {metrics.total_schema_violations}",
+            f"Invalid retries            {metrics.total_invalid_retries}",
+            f"Duplicate side effects     {metrics.total_duplicate_side_effects}",
+            f"Faults injected            {metrics.total_faults_injected}",
+            f"Retries                    {metrics.total_retries}",
+            f"Recovery attempts          {metrics.total_recovery_attempts}",
+            f"p95 latency                {metrics.p95_latency_ms:.2f} ms",
+        ]
+    )
+    if result.regressions:
+        lines.extend(["", "REGRESSION / FAIL", *result.regressions])
+    else:
+        lines.extend(["", "PASS"])
     return "\n".join(lines)

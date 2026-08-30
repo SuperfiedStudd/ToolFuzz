@@ -1,0 +1,7 @@
+task: Refund order ORD-104 for the full order amount.
+faults:
+  - type: malformed_json
+    tool: create_refund
+    occurrence: 1
+assertions:
+  refund_count: 1
