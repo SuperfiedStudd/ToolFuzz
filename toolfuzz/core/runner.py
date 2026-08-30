@@ -52,6 +52,7 @@ class Runner:
         error: str | None = None
 
         async with SandboxClient(self.state) as client:
+
             async def call_tool(
                 tool_name: str,
                 arguments: dict[str, Any],
@@ -102,7 +103,6 @@ class Runner:
     ) -> ToolResult:
         contract = self.contracts[tool_name]
         call = ToolCall(tool_name=tool_name, arguments=arguments)
-        previous_calls = history.get(tool_name, [])
         if any(not result.success for calls in history.values() for _, result in calls):
             trace.record(
                 "recovery_attempt",

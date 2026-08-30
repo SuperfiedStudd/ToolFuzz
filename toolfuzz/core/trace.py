@@ -5,7 +5,6 @@ from typing import Any
 
 from .models import TraceEvent
 
-
 _SECRET_KEYS = {
     "api_key",
     "authorization",

@@ -62,37 +62,53 @@ def test_contracts_convert_to_provider_declarations_and_results() -> None:
             ]
         )
     )[0]
-    assert to_openai_tool_result(call, success_result())["tool_call_id"] == "openai-call"
+    assert (
+        to_openai_tool_result(call, success_result())["tool_call_id"] == "openai-call"
+    )
     assert to_anthropic_tool_result(call, success_result())["is_error"] is False
-    assert to_gemini_tool_result(call, success_result())["function_response"]["name"] == "get_order"
+    assert (
+        to_gemini_tool_result(call, success_result())["function_response"]["name"]
+        == "get_order"
+    )
 
 
 def test_provider_tool_call_normalization() -> None:
-    assert normalize_gemini_tool_calls(
-        {
-            "candidates": [
-                {
-                    "content": {
-                        "parts": [
-                            {"function_call": {"name": "get_order", "args": {"order_id": "ORD-104"}}}
-                        ]
+    assert (
+        normalize_gemini_tool_calls(
+            {
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {
+                                    "function_call": {
+                                        "name": "get_order",
+                                        "args": {"order_id": "ORD-104"},
+                                    }
+                                }
+                            ]
+                        }
                     }
-                }
-            ]
-        }
-    )[0].call.tool_name == "get_order"
-    assert normalize_anthropic_tool_calls(
-        {
-            "content": [
-                {
-                    "type": "tool_use",
-                    "id": "anthropic-call",
-                    "name": "get_order",
-                    "input": {"order_id": "ORD-104"},
-                }
-            ]
-        }
-    )[0].provider_call_id == "anthropic-call"
+                ]
+            }
+        )[0].call.tool_name
+        == "get_order"
+    )
+    assert (
+        normalize_anthropic_tool_calls(
+            {
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "anthropic-call",
+                        "name": "get_order",
+                        "input": {"order_id": "ORD-104"},
+                    }
+                ]
+            }
+        )[0].provider_call_id
+        == "anthropic-call"
+    )
 
 
 class FakeGeminiModels:
@@ -189,9 +205,7 @@ async def test_openai_and_anthropic_complete_after_tool_turn() -> None:
 
     openai_agent = OpenAIAgent(
         load_contracts(),
-        client=SimpleNamespace(
-            chat=SimpleNamespace(completions=OpenAICompletions())
-        ),
+        client=SimpleNamespace(chat=SimpleNamespace(completions=OpenAICompletions())),
     )
 
     anthropic_responses = [
@@ -240,7 +254,12 @@ async def test_gemini_max_turn_cutoff() -> None:
             {
                 "content": {
                     "parts": [
-                        {"function_call": {"name": "get_order", "args": {"order_id": "ORD-104"}}}
+                        {
+                            "function_call": {
+                                "name": "get_order",
+                                "args": {"order_id": "ORD-104"},
+                            }
+                        }
                     ]
                 }
             }
@@ -293,7 +312,9 @@ def test_provider_errors_are_normalized_and_trace_values_are_redacted() -> None:
     assert isinstance(normalize_provider_exception(rate_error), ProviderRateLimitError)
 
     trace = Trace()
-    trace.record("provider_error", api_key="secret-value", authorization="Bearer secret")
+    trace.record(
+        "provider_error", api_key="secret-value", authorization="Bearer secret"
+    )
     assert trace.events[0].metadata == {
         "api_key": "[REDACTED]",
         "authorization": "[REDACTED]",

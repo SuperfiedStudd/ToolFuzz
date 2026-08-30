@@ -1,26 +1,38 @@
 # ToolFuzz
 
-**An adversarial reliability testing framework for tool-using AI agents.**
+**Adversarial reliability testing for tool-using AI agents.**
 
 ToolFuzz injects realistic failures into tool/API interactions and measures
-whether an agent recovers safely. The current V1 foundation includes a
-deterministic scripted refund agent, an in-memory FastAPI tool service, JSON
-Schema contracts, structured traces, retry accounting, regression suites, and
-a core library of staged faults.
+whether an agent recovers safely. It is a small Python library and CLI built
+around deterministic evaluation, real sandbox state, JSON Schema contracts,
+structured traces, and reproducible regression suites.
 
-## The timeout-after-commit problem
+## Why ToolFuzz?
 
-A client timeout does not prove that a side effect failed:
+Tool calls can fail after the world has already changed. A successful HTTP
+request is not the only thing worth testing: agents must distinguish transport
+failures, invalid responses, stale reads, and ambiguous side effects.
+
+### 30-second example
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+toolfuzz run examples/refund_agent/scenarios/timeout_after_commit.yaml
+```
+
+The flagship scenario models this distributed-systems failure:
 
 ```text
 agent -> create_refund(idempotency_key=K) -> refund committed
 agent <- timeout (response lost)
-agent -> create_refund(idempotency_key=K)  # unsafe if not idempotent
+agent -> get_refund                 # inspect authoritative state
+agent -> create_refund(idempotency_key=K)  # safe replay if needed
 ```
 
-The example agent treats the timeout as ambiguous, checks refund status, and
-ends with exactly one refund. The sandbox also honors the same idempotency key
-if a retry is made.
+The sandbox honors idempotency keys, so the result can verify one refund
+instead of trusting a label or an LLM judge.
 
 ## Quick start
 
@@ -31,45 +43,25 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
-toolfuzz run examples/refund_agent/scenario.yaml
-toolfuzz run examples/refund_agent/scenario.yaml --report json
+toolfuzz --help
 toolfuzz run examples/refund_agent/scenarios/
-pytest
+toolfuzz run examples/refund_agent/scenarios/ \
+  --report json --output reports/refund-suite.json
+python -m pytest -q
 ```
 
-The CLI prints the injected fault, PASS/FAIL, recovery metrics, schema
-violations, retries, duplicate side effects, tool-call count, and p50/p95
-logical latencies. JSON mode emits the complete structured result, including
-the trace. A suite can define regression gates in `suite.yaml`; a failed gate
-produces a non-zero exit code.
+Example output:
 
-## Provider support
-
-| Provider | Adapter | Live validated |
-| --- | --- | --- |
-| Scripted | Yes | Deterministic CI |
-| Gemini | Yes | Happy path validated; recovery quota-limited |
-| OpenAI | Yes | No |
-| Anthropic | Yes | No |
-
-Provider SDKs are optional. Install Gemini support with
-`pip install -e ".[gemini]"`, or all provider SDKs with
-`pip install -e ".[providers]"`. Keys come from environment variables; use
-`.env.example` as a placeholder template and never commit local secret files.
-
-The dedicated smoke command runs only two scenarios:
-
-```bash
-toolfuzz live-test gemini
-toolfuzz live-test gemini --model gemini-3.6-flash
+```text
+10/10 scenarios passed
+Task success rate          100%
+Graceful recovery rate     100%
+Schema violations          2
+Invalid retries            0
+Duplicate side effects     0
+p95 latency                23.25 ms
+PASS
 ```
-
-The happy-path smoke run was validated successfully. The timeout-after-commit
-run committed one refund but the provider quota was exhausted before Gemini
-could complete recovery, so it is not claimed as a successful live validation.
-Live provider runs may incur API charges. ToolFuzz retains control of tool
-execution, fault injection, validation, and trace recording; provider SDKs do
-not execute tools directly.
 
 ## Supported faults
 
@@ -84,24 +76,87 @@ not execute tools directly.
 | `duplicate_response` | after response | Replays the prior successful response |
 | `stale_data` | after response | Older valid resource state |
 | `conflicting_data` | after response | Valid data conflicting with current state |
-| `schema_drift` | after response | Renamed/type-changed response field |
+| `schema_drift` | after response | Renamed or type-changed response field |
 | `timeout_after_commit` | after commit | Committed side effect with lost response |
 
-Every injected fault is recorded in the trace. Transport failures, HTTP
-failures, malformed responses, schema violations, and semantic conflicts stay
-distinct so the agent receives the real failure mode.
+Every injected fault generates an explicit trace event. Transport failures,
+HTTP failures, malformed responses, schema violations, and semantic conflicts
+remain distinct.
 
-## Deterministic CI regression testing
+## Architecture
 
-The refund scenarios under `examples/refund_agent/scenarios/` run independently
-against fresh sandbox state. They cover the happy path and each core fault,
-including the flagship timeout-after-commit/idempotency case. The GitHub
-Actions workflow installs the package, runs the pytest suite, and runs this
-regression suite without external API keys.
+```mermaid
+flowchart LR
+    A[Agent] --> P[Provider Adapter]
+    P --> R[ToolFuzz Runner]
+    R --> C[Contract Validator]
+    C --> F[Fault Injector]
+    F --> S[Tool Sandbox / REST API]
+    R --> T[Trace + Metrics + Evaluator]
+    S --> T
+```
 
-## Current scope
+ToolFuzz retains control of tool execution: provider SDKs produce requested
+tool calls, but never execute the registered tools directly.
 
-The first slice includes `get_order`, `get_refund`, and idempotent
-`create_refund`, plus the `AgentAdapter` interface and `ScriptedAgent`.
-Persistence, dashboards, distributed execution, frontend support, and live
-OpenAI/Anthropic validation are not implemented yet.
+## Providers
+
+| Provider | Adapter | Live validated |
+| --- | --- | --- |
+| Scripted | Yes | Deterministic CI |
+| Gemini | Yes | Happy path validated; recovery quota-limited |
+| OpenAI | Yes | No |
+| Anthropic | Yes | No |
+
+Provider SDKs are optional:
+
+```bash
+pip install -e ".[gemini]"
+pip install -e ".[openai]"
+pip install -e ".[anthropic]"
+pip install -e ".[providers]"
+```
+
+Keys come from environment variables; `.env.example` contains placeholders
+only. Live runs may incur provider charges. The dedicated Gemini smoke command
+runs only the happy and timeout-after-commit scenarios:
+
+```bash
+toolfuzz live-test gemini
+toolfuzz live-test gemini --model gemini-3.6-flash
+```
+
+The happy path was validated live. The timeout-after-commit run committed one
+refund with zero duplicates, but Google quota was exhausted before Gemini
+completed recovery; it is not claimed as a successful live validation.
+
+## Metrics and regression testing
+
+Each run reports task success, graceful recovery, tool-call correctness, schema
+violations, invalid retries, duplicate side effects, total calls, p50/p95
+latency, faults injected, retries, and recovery attempts. Suite output adds
+scenario counts, rates, totals, and aggregate latency.
+
+The ten refund scenarios run against fresh sandbox state. `suite.yaml` defines
+optional gates such as minimum success/recovery rates and maximum invalid
+retries/duplicate side effects. A breached gate returns a non-zero exit code.
+GitHub Actions runs lint, pytest, and this deterministic suite without API keys.
+
+## Docker
+
+```bash
+docker build -t toolfuzz .
+docker run --rm toolfuzz run examples/refund_agent/scenarios/
+```
+
+The image uses Python 3.12, installs the package, excludes local environment
+files from the build context, and runs as a non-root user.
+
+## Project status
+
+Implemented: deterministic scripted evaluation, the in-memory refund REST
+sandbox, provider adapters, staged fault injection, JSON reports, retry
+policies, regression gates, and CI.
+
+Not implemented: persistence, dashboards, distributed execution, frontend
+support, and live OpenAI/Anthropic validation.

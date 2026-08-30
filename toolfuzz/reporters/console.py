@@ -7,9 +7,10 @@ def render(result: RunResult | SuiteResult) -> str:
     if isinstance(result, SuiteResult):
         return render_suite(result)
     metrics = result.metrics
-    fault_names = ", ".join(
-        fault.type for fault in result.scenario.faults if fault.enabled
-    ) or "none"
+    fault_names = (
+        ", ".join(fault.type for fault in result.scenario.faults if fault.enabled)
+        or "none"
+    )
     status = "PASS" if metrics.task_success and metrics.graceful_recovery else "FAIL"
     lines = [
         "ToolFuzz run",
@@ -46,9 +47,12 @@ def render_suite(result: SuiteResult) -> str:
         result.results,
         strict=True,
     ):
-        faults = ", ".join(
-            fault.type for fault in scenario_result.scenario.faults if fault.enabled
-        ) or "none"
+        faults = (
+            ", ".join(
+                fault.type for fault in scenario_result.scenario.faults if fault.enabled
+            )
+            or "none"
+        )
         status = (
             "PASS"
             if scenario_result.metrics.task_success

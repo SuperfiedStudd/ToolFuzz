@@ -4,7 +4,7 @@ import inspect
 import os
 from typing import Any
 
-from ..core.models import ToolContract, ToolResult
+from ..core.models import ToolContract
 from ..core.trace import Trace
 from .base import (
     AgentAdapter,
@@ -13,13 +13,14 @@ from .base import (
     normalize_provider_exception,
     record_provider_event,
 )
-from .prompts import SYSTEM_PROMPT
 from .normalization import (
     gemini_final_text,
     normalize_gemini_tool_calls,
     to_gemini_tool_result,
     to_gemini_tools,
 )
+from .prompts import SYSTEM_PROMPT
+
 
 class GeminiAgent(AgentAdapter):
     provider = "gemini"

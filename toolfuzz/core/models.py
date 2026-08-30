@@ -139,4 +139,7 @@ class SuiteResult(BaseModel):
 
     @property
     def passed(self) -> bool:
-        return not self.regressions and self.metrics.scenarios_passed == self.metrics.scenarios_total
+        return (
+            not self.regressions
+            and self.metrics.scenarios_passed == self.metrics.scenarios_total
+        )

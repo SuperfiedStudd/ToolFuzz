@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -64,9 +65,7 @@ def test_cli_returns_nonzero_when_suite_gate_fails(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     (suite_dir / "bad.yaml").write_text(
-        "task: Refund order ORD-104.\n"
-        "faults: []\n"
-        "assertions:\n  refund_count: 2\n",
+        "task: Refund order ORD-104.\nfaults: []\nassertions:\n  refund_count: 2\n",
         encoding="utf-8",
     )
     (tmp_path / "tools.json").write_text(
@@ -78,3 +77,25 @@ def test_cli_returns_nonzero_when_suite_gate_fails(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "REGRESSION / FAIL" in result.stdout
+
+
+def test_cli_writes_json_report_to_nested_output_path(tmp_path: Path) -> None:
+    report_path = tmp_path / "reports" / "refund.json"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            str(SCENARIOS / "happy_path.yaml"),
+            "--report",
+            "json",
+            "--output",
+            str(report_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert report_path.exists()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["metrics"]["task_success"] is True
+    assert report["final_refund_count"] == 1

@@ -2,7 +2,6 @@
 
 import asyncio
 import copy
-from typing import Any
 
 from ..core.models import FaultSpec
 from .base import Fault, FaultContext, FaultOutcome, FaultStage

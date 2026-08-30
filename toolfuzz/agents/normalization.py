@@ -58,7 +58,13 @@ def _function_declaration(contract: ToolContract) -> dict[str, Any]:
 
 
 def to_gemini_tools(contracts: Iterable[ToolContract]) -> list[dict[str, Any]]:
-    return [{"function_declarations": [_function_declaration(contract) for contract in contracts]}]
+    return [
+        {
+            "function_declarations": [
+                _function_declaration(contract) for contract in contracts
+            ]
+        }
+    ]
 
 
 def to_openai_tools(contracts: Iterable[ToolContract]) -> list[dict[str, Any]]:
@@ -87,7 +93,9 @@ def _arguments(value: Any) -> dict[str, Any]:
         try:
             value = json.loads(value)
         except json.JSONDecodeError as error:
-            raise ProviderResponseError("provider returned invalid tool arguments") from error
+            raise ProviderResponseError(
+                "provider returned invalid tool arguments"
+            ) from error
     if not isinstance(value, dict):
         raise ProviderResponseError("provider returned non-object tool arguments")
     return value
@@ -156,7 +164,9 @@ def tool_result_payload(result: ToolResult) -> dict[str, Any]:
     }
 
 
-def to_openai_tool_result(call: NormalizedToolCall, result: ToolResult) -> dict[str, Any]:
+def to_openai_tool_result(
+    call: NormalizedToolCall, result: ToolResult
+) -> dict[str, Any]:
     return {
         "role": "tool",
         "tool_call_id": call.provider_call_id,
@@ -164,7 +174,9 @@ def to_openai_tool_result(call: NormalizedToolCall, result: ToolResult) -> dict[
     }
 
 
-def to_anthropic_tool_result(call: NormalizedToolCall, result: ToolResult) -> dict[str, Any]:
+def to_anthropic_tool_result(
+    call: NormalizedToolCall, result: ToolResult
+) -> dict[str, Any]:
     return {
         "type": "tool_result",
         "tool_use_id": call.provider_call_id,
@@ -173,7 +185,9 @@ def to_anthropic_tool_result(call: NormalizedToolCall, result: ToolResult) -> di
     }
 
 
-def to_gemini_tool_result(call: NormalizedToolCall, result: ToolResult) -> dict[str, Any]:
+def to_gemini_tool_result(
+    call: NormalizedToolCall, result: ToolResult
+) -> dict[str, Any]:
     return {
         "function_response": {
             "name": call.call.tool_name,

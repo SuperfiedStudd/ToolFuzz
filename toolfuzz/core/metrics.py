@@ -33,8 +33,7 @@ def calculate_metrics(
         not event.get("valid", True) for event in trace.metadata_for("retry")
     )
     duplicate_side_effects = sum(
-        not event.get("created", True)
-        for event in trace.metadata_for("side_effect")
+        not event.get("created", True) for event in trace.metadata_for("side_effect")
     )
     task_success = final_refund_count == scenario.assertions.get("refund_count", 1)
     no_duplicates = duplicate_side_effects == 0
@@ -91,15 +90,11 @@ def aggregate_metrics(results: list[RunResult]) -> SuiteMetrics:
         total_schema_violations=sum(
             result.metrics.schema_violations for result in results
         ),
-        total_invalid_retries=sum(
-            result.metrics.invalid_retries for result in results
-        ),
+        total_invalid_retries=sum(result.metrics.invalid_retries for result in results),
         total_duplicate_side_effects=sum(
             result.metrics.duplicate_side_effects for result in results
         ),
-        total_faults_injected=sum(
-            result.metrics.faults_injected for result in results
-        ),
+        total_faults_injected=sum(result.metrics.faults_injected for result in results),
         total_retries=sum(result.metrics.retries for result in results),
         total_recovery_attempts=sum(
             result.metrics.recovery_attempts for result in results

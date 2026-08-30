@@ -14,9 +14,9 @@ from .base import (
     record_provider_event,
 )
 from .normalization import (
+    as_jsonable,
     normalize_openai_tool_calls,
     openai_final_text,
-    as_jsonable,
     to_openai_tool_result,
     to_openai_tools,
 )

@@ -1,8 +1,8 @@
 """Scenario discovery, suite execution, and regression gates."""
 
 import json
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -41,9 +41,7 @@ async def run_suite(
     agent_factory: Callable[[dict[str, ToolContract]], AgentAdapter] | None = None,
 ) -> SuiteResult:
     scenario_paths = sorted(
-        path
-        for path in directory.glob("*.yaml")
-        if path.name != "suite.yaml"
+        path for path in directory.glob("*.yaml") if path.name != "suite.yaml"
     )
     if not scenario_paths:
         raise ValueError(f"no scenario YAML files found in {directory}")

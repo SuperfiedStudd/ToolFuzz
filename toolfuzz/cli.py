@@ -5,9 +5,10 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+import yaml
 
-from .agents.factory import create_agent
 from .agents.base import ProviderError
+from .agents.factory import create_agent
 from .core.models import Scenario, SuiteResult
 from .core.runner import Runner
 from .core.suite import load_contracts, run_suite
@@ -35,10 +36,16 @@ def run(
         str | None,
         typer.Option("--model", help="Optional provider model override."),
     ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write JSON output to this file."),
+    ] = None,
 ) -> None:
     """Run one YAML scenario or every scenario in a directory."""
     if report not in {"console", "json"}:
         raise typer.BadParameter("must be 'console' or 'json'")
+    if output and report != "json":
+        raise typer.BadParameter("--output requires --report json")
     try:
         if scenario_path.is_dir():
             result = asyncio.run(
@@ -53,13 +60,22 @@ def run(
             )
         else:
             scenario = Scenario.from_yaml(str(scenario_path))
-            contracts = load_contracts(scenario_path.parent / "tools.json")
+            contract_path = scenario_path.parent / "tools.json"
+            if not contract_path.exists():
+                contract_path = scenario_path.parent.parent / "tools.json"
+            contracts = load_contracts(contract_path)
             agent = create_agent(provider, contracts, model=model)
             result = asyncio.run(Runner(contracts).run(scenario, agent=agent))
-    except (ProviderError, ValueError) as error:
-        typer.echo(f"Provider configuration error: {error}", err=True)
+    except (ProviderError, ValueError, yaml.YAMLError, OSError) as error:
+        typer.echo(f"ToolFuzz configuration error: {error}", err=True)
         raise typer.Exit(code=2) from error
-    typer.echo(render_json(result) if report == "json" else render_console(result))
+    rendered = render_json(result) if report == "json" else render_console(result)
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(rendered + "\n", encoding="utf-8")
+        typer.echo(f"Wrote JSON report to {output}")
+    else:
+        typer.echo(rendered)
     if isinstance(result, SuiteResult) and result.regressions:
         raise typer.Exit(code=1)
     if not isinstance(result, SuiteResult) and result.error:

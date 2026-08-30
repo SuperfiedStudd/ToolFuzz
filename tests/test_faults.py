@@ -179,9 +179,7 @@ async def test_stale_and_conflicting_reads_are_visible_and_safe() -> None:
 
         assert state.refund_count == 0
         assert result.metrics.task_success is True
-        assert any(
-            event.event_type == "semantic_conflict" for event in result.events
-        )
+        assert any(event.event_type == "semantic_conflict" for event in result.events)
 
 
 @pytest.mark.asyncio

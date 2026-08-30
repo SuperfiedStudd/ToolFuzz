@@ -24,7 +24,9 @@ class ScriptedAgent(AgentAdapter):
     async def run(self, task: str, call_tool: ToolCaller) -> None:
         del task
         order_result = await call_tool("get_order", {"order_id": self.order_id})
-        if not order_result.success or not self._order_is_refundable(order_result.output):
+        if not order_result.success or not self._order_is_refundable(
+            order_result.output
+        ):
             return
         create_arguments = {
             "order_id": self.order_id,
